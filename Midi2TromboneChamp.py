@@ -316,7 +316,7 @@ if __name__ == '__main__':
         dicc = dict()
         dicc["notes"] = notes
         dicc["name"]= fieldValues[0]
-        dicc["shortname"]= fieldValues[1]
+        dicc["shortName"]= fieldValues[1]
         dicc["trackRef"]= fieldValues[2]
         dicc["year"]= int(fieldValues[3])
         dicc["author"]= fieldValues[4]
