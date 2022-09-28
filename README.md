@@ -9,4 +9,5 @@ It's strongly advised to make your own MIDI files. Trying to import ones directl
 
 ## How It Works
 Midi2TromboneChamp exports JSON in the following format that represents a chart:
+
 [note position, note length, start pitch, pitch delta, pitch end]
