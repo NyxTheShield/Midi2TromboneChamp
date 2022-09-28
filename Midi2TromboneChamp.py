@@ -241,9 +241,10 @@ if __name__ == '__main__':
 
             else:  # Note
 
-                noteToUse = min(max(48, message.note),72)
+                
                 
                 if (message.type == "note_on"):
+                    noteToUse = min(max(48, message.note),72)
                     lastNote = noteToUse
                     lastChannel = message.channel
                     if (not noteHeld):
@@ -267,8 +268,7 @@ if __name__ == '__main__':
 
                     
                 if (message.type == "note_off"):
-                    print("Note OFFFFFFFFFF!!!")
-                    print("Holding Note?" + str(noteHeld))
+                    noteToUse = min(max(48, message.note),72)
                     if (message.channel == 1):
                         print("Skipping channel 1 note off...")
                     if (message.channel == 0):
