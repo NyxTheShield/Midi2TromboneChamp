@@ -224,7 +224,7 @@ if __name__ == '__main__':
     lastNote = -1000
     lastChannel = -1
     defaultLength = 0.2
-    noteTrimming = 0.2
+    noteTrimming = 0.0
     currBeat = 0
     noteHeld = False
     
@@ -252,7 +252,8 @@ if __name__ == '__main__':
                         currentNote = SetupNote(currBeat, 0, noteToUse, noteToUse)
                     else:
                         #If we are holding one, we add the previous note we set up, and set up a new one
-                        currentNote[1] = round(currBeat-currentNote[0],2)
+                        print("Cancelling Previous note!" + str(currBeat) + " old is" + str(currentNote[0]))
+                        currentNote[1] = round(currBeat-currentNote[0],3)
                         currentNote[4] = (noteToUse-60)*13.75
                         currentNote[3] = currentNote[4]-currentNote[2]
 
@@ -273,7 +274,7 @@ if __name__ == '__main__':
                         print("Skipping channel 1 note off...")
                     if (message.channel == 0):
                         if (noteToUse == lastNote and noteHeld):
-                            currentNote[1] = round(currBeat-currentNote[0] - noteTrimming,2)
+                            currentNote[1] = round(currBeat-currentNote[0] - noteTrimming,3)
                             currentNote[4] = currentNote[4]
                             currentNote[3] = 0
 
