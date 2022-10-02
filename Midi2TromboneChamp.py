@@ -1,18 +1,12 @@
-import mido.midifiles as mido
 from mido import MidiFile, MetaMessage
 import pyperclip
 
-
 import sys
 import json
-import random
 from easygui import *
 import os
 import math
-import sys
 
-
-#Actual code
 
 DEFAULT_TEMPO = 0.5
 
@@ -31,6 +25,7 @@ def note2freq(x):
     a = 440
     return (a/32) * (2 ** ((x-9)/12))
 
+
 def round_decimals_up(number:float, decimals:int=2):
     """
     Returns a value rounded up to a specific number of decimal places.
@@ -45,10 +40,20 @@ def round_decimals_up(number:float, decimals:int=2):
     factor = 10 ** decimals
     return math.ceil(number * factor) / factor
 
+
+def is_note_on(msg):
+    return msg.type == "note_on" and msg.velocity > 0
+
+
+def is_note_off(msg):
+    return msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0)
+
+
 def SetupNote(beat, length, noteNumber, endNoteNumber):
     startPitch = (noteNumber-60)*13.75
     endPitch = (endNoteNumber-60)*13.75
     return [beat, length , startPitch , endPitch - startPitch , endPitch]
+
 
 path = fileopenbox()
 filename = os.path.basename(path)
@@ -155,10 +160,7 @@ if __name__ == '__main__':
                     print("Unsupported metamessage: " + str(message))
 
             else:  # Note
-
-                
-                
-                if (message.type == "note_on"):
+                if is_note_on(message):
                     noteToUse = min(max(48, message.note),72)
                     lastNote = noteToUse
                     lastChannel = message.channel
@@ -182,8 +184,7 @@ if __name__ == '__main__':
                     print(currentNote)
                     noteHeld = True
 
-                    
-                if (message.type == "note_off"):
+                if is_note_off(message):
                     noteToUse = min(max(48, message.note),72)
                     if (message.channel == 1):
                         print("Skipping channel 1 note off...")
