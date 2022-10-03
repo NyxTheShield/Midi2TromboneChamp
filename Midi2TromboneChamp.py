@@ -1,7 +1,6 @@
 import mido.midifiles as mido
-from mido import MidiFile, MetaMessage, MidiTrack
+from mido import MidiFile, MetaMessage
 import pyperclip
-
 
 
 import sys
@@ -12,95 +11,11 @@ import os
 import math
 import sys
 
-#Monkey patch
-def read_track(infile, debug=False, clip=False):
-    track = MidiTrack()
-
-    name, size = mido.midifiles.read_chunk_header(infile)
-
-    if name != b'MTrk':
-        raise IOError('no MTrk header at start of track')
-
-    if debug:
-        _dbg('-> size={}'.format(size))
-        _dbg()
-
-    start = infile.tell()
-    last_status = None
-
-    while True:
-        # End of track reached.
-        if infile.tell() - start == size:
-            break
-
-        if debug:
-            _dbg('Message:')
-
-        delta = mido.midifiles.read_variable_int(infile)
-
-        if debug:
-            _dbg('-> delta={}'.format(delta))
-
-        status_byte = mido.midifiles.read_byte(infile)
-
-        if status_byte < 0x80:
-            if last_status is None:
-                raise IOError('running status without last_status')
-            peek_data = [status_byte]
-            status_byte = last_status
-        else:
-            if status_byte != 0xff:
-                # Meta messages don't set running status.
-                last_status = status_byte
-            peek_data = []
-
-        if status_byte == 0xff:
-            msg = mido.midifiles.read_meta_message(infile, delta)
-        elif status_byte in [0xf0, 0xf7]:
-            # TODO: I'm not quite clear on the difference between
-            # f0 and f7 events.
-            msg = mido.midifiles.read_sysex(infile, delta)
-        else:
-            msg = custom_read_message(infile, status_byte, peek_data, delta, clip)
-
-        track.append(msg)
-
-        if debug:
-            _dbg('-> {!r}'.format(msg))
-            _dbg()
-
-    return track
-
-#Monkey patch
-def custom_read_message(infile, status_byte, peek_data, delta, clip=False):
-    #print("Custom Read Message from Monkey Patch!!")
-    try:
-        spec = mido.midifiles.SPEC_BY_STATUS[status_byte]
-    except LookupError:
-        raise IOError('undefined status byte 0x{:02x}'.format(status_byte))
-
-    # Subtract 1 for status byte.
-    size = spec['length'] - 1 - len(peek_data)
-    data_bytes = peek_data + mido.midifiles.read_bytes(infile, size)
-
-    if clip:
-        data_bytes = [byte if byte < 127 else 127 for byte in data_bytes]
-    else:
-        #All of this monkey patch just because mido fucking ends execution if it finds a byte than 127...
-        for i, byte in enumerate(data_bytes):
-            if byte > 127:
-                data_bytes[i] = 127
-                print("byte > 127?")
-                #raise IOError('data byte must be in range 0..127')
-
-    return mido.midifiles.Message.from_bytes([status_byte] + data_bytes, time=delta)
-
-#Monkey patch
-mido.midifiles.read_track = read_track
 
 #Actual code
 
 DEFAULT_TEMPO = 0.5
+
 
 def ticks2s(ticks, tempo, ticks_per_beat):
     """
@@ -148,7 +63,7 @@ if __name__ == '__main__':
     for i in range(16):
         nyxTracks[i] = []
     # Import the MIDI file...
-    mid = MidiFile(path)
+    mid = MidiFile(filename=path, clip=True)
 
     print("TYPE: " + str(mid.type))
     print("LENGTH: " + str(mid.length))
