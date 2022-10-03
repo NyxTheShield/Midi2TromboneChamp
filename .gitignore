@@ -7,3 +7,5 @@ dist
 
 # Generated Trombone Champ songs
 *.tmb
+
+history.json
