@@ -1,7 +1,8 @@
 # Vim scratch files
 *~
 
-# pyinstaller build directories
+# pyinstaller build files
+*.spec
 build
 dist
 
