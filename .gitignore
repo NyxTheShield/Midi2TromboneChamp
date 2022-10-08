@@ -1,5 +1,9 @@
 # Vim scratch files
 *~
 
+# pyinstaller build directories
+build
+dist
+
 # Generated Trombone Champ songs
 *.tmb
