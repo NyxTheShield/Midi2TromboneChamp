@@ -11,7 +11,18 @@ from collections import OrderedDict
 
 DEFAULT_TEMPO = 0.5
 DEFAULT_NOTE_LENGTH = 0.2
-_THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+APPDATA_DIR = os.path.expandvars(r'%LOCALAPPDATA%\Midi2TromboneChamp')
+
+
+def resource_path():
+    # https://stackoverflow.com/questions/7674790/bundling-data-files-with-pyinstaller-onefile
+    # pyinstaller secretly runs application from a temp directly and doesn't pass the original exe location through,
+    # so rather than creating a .json wherever the exe is, we have to dump it in appdata
+    directory = APPDATA_DIR  # if getattr(sys, 'frozen', False) else os.path.dirname(os.path.realpath(__file__))
+    if not os.path.exists(directory):
+        print(f"Creating directory to store config: {directory}")
+        os.mkdir(directory)
+    return directory
 
 
 def ticks2s(ticks, tempo, ticks_per_beat):
@@ -59,7 +70,7 @@ def SetupNote(beat, length, noteNumber, endNoteNumber):
 
 
 class DialogFieldValues:
-    _history_file = os.path.join(_THIS_DIR, "history.json")
+    _history_file = os.path.join(resource_path(), "history.json")
 
     def __init__(self):
         # Default values for each field go here
