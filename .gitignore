@@ -1,12 +1,1 @@
-# Vim scratch files
-*~
 
-# pyinstaller build files
-*.spec
-build
-dist
-
-# Generated Trombone Champ songs
-*.tmb
-
-history.json
