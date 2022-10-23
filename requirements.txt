@@ -1,0 +1,5 @@
+# These non-standard packages are required
+easygui
+mido
+pyinstaller
+pyperclip
