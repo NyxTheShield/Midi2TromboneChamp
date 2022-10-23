@@ -142,8 +142,8 @@ def DynamicBeatToTromboneBeat(tempoEvents, midiBeat):
         idx = 1
     previousMark = 0
     time = 0
-    for i in range(idx,len(tempoEvents)):
-        if midiBeat >= tempoEvents[i][1]:
+    for i in range(idx,len(tempoEvents) + 1):
+        if i < len(tempoEvents) and midiBeat >= tempoEvents[i][1]:
             time += baseTempo * (tempoEvents[i][1] - previousMark)
             previousMark = tempoEvents[i][1]
             baseTempo = tempoEvents[i][0]
