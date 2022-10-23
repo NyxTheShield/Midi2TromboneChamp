@@ -42,3 +42,12 @@ And for lyrics...
 [{"bar":1,"text":"Do"},{"bar":2,"text":"Re"},{"bar":3,"text":"Mi"}]
    ^beat, must be whole number
 ```
+
+## Developer Stuff
+You will need Python and pip if you want to make changes to this code. After installing those, install the requirements using this command inside the directory
+
+`pip install -r requirements.txt`
+
+to create an exe, run the following:
+
+`pyinstaller --onefile .\Midi2TromboneChamp.py`
