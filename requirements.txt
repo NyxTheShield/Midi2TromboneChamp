@@ -1,5 +1,4 @@
-# These non-standard packages are required
+# These packages are required, pyinstaller is required to create an exe
 easygui
 mido
 pyinstaller
-pyperclip

@@ -1,8 +1,5 @@
 import mido.midifiles as mido
 from mido import MidiFile, MetaMessage, MidiTrack
-import pyperclip
-
-
 
 import sys
 import json
@@ -11,96 +8,6 @@ from easygui import *
 import os
 import math
 import sys
-
-#Monkey patch
-def read_track(infile, debug=False, clip=False):
-    track = MidiTrack()
-
-    name, size = mido.midifiles.read_chunk_header(infile)
-
-    if name != b'MTrk':
-        raise IOError('no MTrk header at start of track')
-
-    if debug:
-        _dbg('-> size={}'.format(size))
-        _dbg()
-
-    start = infile.tell()
-    last_status = None
-
-    while True:
-        # End of track reached.
-        if infile.tell() - start == size:
-            break
-
-        if debug:
-            _dbg('Message:')
-
-        delta = mido.midifiles.read_variable_int(infile)
-
-        if debug:
-            _dbg('-> delta={}'.format(delta))
-
-        status_byte = mido.midifiles.read_byte(infile)
-
-        if status_byte < 0x80:
-            if last_status is None:
-                raise IOError('running status without last_status')
-            peek_data = [status_byte]
-            status_byte = last_status
-        else:
-            if status_byte != 0xff:
-                # Meta messages don't set running status.
-                last_status = status_byte
-            peek_data = []
-
-        if status_byte == 0xff:
-            msg = mido.midifiles.read_meta_message(infile, delta)
-        elif status_byte in [0xf0, 0xf7]:
-            # TODO: I'm not quite clear on the difference between
-            # f0 and f7 events.
-            msg = mido.midifiles.read_sysex(infile, delta)
-        else:
-            msg = custom_read_message(infile, status_byte, peek_data, delta, clip)
-
-        track.append(msg)
-
-        if debug:
-            _dbg('-> {!r}'.format(msg))
-            _dbg()
-
-    return track
-
-#Monkey patch
-def custom_read_message(infile, status_byte, peek_data, delta, clip=False):
-    #print("Custom Read Message from Monkey Patch!!")
-    try:
-        spec = mido.midifiles.SPEC_BY_STATUS[status_byte]
-    except LookupError:
-        raise IOError('undefined status byte 0x{:02x}'.format(status_byte))
-
-    # Subtract 1 for status byte.
-    size = spec['length'] - 1 - len(peek_data)
-    data_bytes = peek_data + mido.midifiles.read_bytes(infile, size)
-
-    if clip:
-        data_bytes = [byte if byte < 127 else 127 for byte in data_bytes]
-    else:
-        #All of this monkey patch just because mido fucking ends execution if it finds a byte than 127...
-        for i, byte in enumerate(data_bytes):
-            if byte > 127:
-                data_bytes[i] = 127
-                print("byte > 127?")
-                #raise IOError('data byte must be in range 0..127')
-
-    return mido.midifiles.Message.from_bytes([status_byte] + data_bytes, time=delta)
-
-#Monkey patch
-mido.midifiles.read_track = read_track
-
-#Actual code
-
-DEFAULT_TEMPO = 0.5
 
 def ticks2s(ticks, tempo, ticks_per_beat):
     """
@@ -120,12 +27,59 @@ def SetupNote(beat, length, noteNumber, endNoteNumber):
     endPitch = (endNoteNumber-60)*13.75
     return [beat, length , startPitch , endPitch - startPitch , endPitch]
 
-path = fileopenbox()
+# Substitute lyrics with stuff
+def subLyrics(lyric):
+    l = lyric.replace("=","-")
+    l = l.replace("+","")
+    l = l.replace("#","")
+    l = l.replace("^","")
+    l = l.replace("`",'"')
+    return l
+
+def history_file_path():
+    # https://stackoverflow.com/questions/7674790/bundling-data-files-with-pyinstaller-onefile
+    # pyinstaller secretly runs application from a temp directly and doesn't pass the original exe location through,
+    # so rather than creating a .json wherever the exe is, we have to dump it in appdata
+    directory = os.path.expandvars(r'%LOCALAPPDATA%\Midi2TromboneChamp')
+    if not os.path.exists(directory):
+        print(f"Creating directory to store config: {directory}")
+        os.mkdir(directory)
+    return os.path.join(directory, "history.json")
+
+# Load the field history
+dicc = dict()
+history_file = history_file_path()
+loadSuccess = False
+if os.path.exists(history_file):
+    try:
+        with open(history_file, "r") as f:
+            dicc = json.load(f)
+        loadSuccess = True
+    except:
+        print("ERROR: Exception was raised when trying to load dialog history! " +
+              f"You may need to delete {history_file} to fix. Ignoring the history for now")
+if not loadSuccess:
+    # Default values for first time loading or if error occurred
+    dicc["year"] = 2022
+    dicc["author"] = ""
+    dicc["genre"] = ""
+    dicc["description"] = ""
+    dicc["difficulty"] = 5
+    dicc["savednotespacing"] = 120
+    dicc["timesig"] = 4
+    dicc["midfile"] = "*"
+    dicc["savefile"] = "song.tmb"
+
+path = fileopenbox(msg="Choose a MIDI file to convert.",
+                    default=dicc["midfile"],
+                    filetypes=[["\\*.mid", "\\*.midi"], "MIDI files"])
+dicc["midfile"] = path
 filename = os.path.basename(path)
 filename = os.path.splitext(filename)[0]
 songName = filename
 defaultLength = 0.2
 bpm = float(enterbox("BPM of Midi", "Enter BPM", 120))
+DEFAULT_TEMPO = 60 / bpm
 
 # Compensation for the fact that TromboneChamp doesn't change tempo
 # These tempo values are in seconds per beat except bpm what and why
@@ -147,16 +101,9 @@ def DynamicBeatToTromboneBeat(tempoEvents, midiBeat):
             break
     return round((time * bpm) / 60, 3)
 
-# Substitute lyrics with stuff
-def subLyrics(lyric):
-    l = lyric.replace("=","-")
-    l = l.replace("+","")
-    l = l.replace("`",'"')
-    return l
-
 if __name__ == '__main__':
     # Import the MIDI file...
-    mid = MidiFile(path)
+    mid = MidiFile(path, clip=True)
 
     print("TYPE: " + str(mid.type))
     print("LENGTH: " + str(mid.length))
@@ -187,7 +134,6 @@ if __name__ == '__main__':
     skipOtherTracks = False
 
     for i, track in enumerate(mid.tracks):
-        currTrack = i
         tempo = DEFAULT_TEMPO
         totaltime = 0
         globalTime = 0
@@ -212,6 +158,7 @@ if __name__ == '__main__':
                     if (message.name in ["PART VOCALS", "PART_VOCALS", "BAND VOCALS", "BAND_VOCALS"]):
                         # Special track label for rockband/guitar hero tracks. All other events void.
                         allMidiEventsSorted = []
+                        glissyHints = {}
                         # Nothing important should be skipped, first track should be tempo and stuff
                         skipOtherTracks = True
                 elif message.type == "lyrics":
@@ -220,6 +167,10 @@ if __name__ == '__main__':
                         glissyHints[globalBeatTime] = None
                     else:
                         lyricEvents += [(i, message.text, DynamicBeatToTromboneBeat(tempoEvents, globalBeatTime))]
+                elif message.type == "text":
+                    if message.text == "+":
+                        # Sometimes they use text events too just to fuck with you
+                        glissyHints[globalBeatTime] = None
                 elif message.type == "end_of_track":
                     pass
                 else:
@@ -240,7 +191,7 @@ if __name__ == '__main__':
         l = subLyrics(lyric)
         if l == "":
             continue
-        if beat - lastLyricBeat <= 1:
+        if beat - lastLyricBeat < 1:
             if lyricsOut[-1]["text"][-1] == "-":
                 lyricsOut[-1]["text"] = lyricsOut[-1]["text"][:-1] + l
             else:
@@ -252,7 +203,6 @@ if __name__ == '__main__':
             lyricEvent["bar"] = lastLyricBeat
             lyricsOut += [lyricEvent]
 
-    currTrack = i
     tempo = DEFAULT_TEMPO
     totaltime = 0
     globalTime = 0
@@ -266,6 +216,7 @@ if __name__ == '__main__':
     currBeat = 0
     noteHeld = False
     lastNoteOffBeat = 0
+    heldNoteChannel = -1
 
     for i, message, currBeat in allMidiEventsSorted:
         currentBeat2 = DynamicBeatToTromboneBeat(tempoEvents, currBeat)
@@ -297,6 +248,7 @@ if __name__ == '__main__':
                 if (not noteHeld):
                     #No notes being held, so we set it up
                     currentNote = SetupNote(currentBeat2, 0, noteToUse, noteToUse)
+                    heldNoteChannel = message.channel
                 else:
                     #If we are holding one, we add the previous note we set up, and set up a new one
                     print("Cancelling Previous note! " + str(currentBeat2) + " old is " + str(currentNote[0]))
@@ -319,11 +271,12 @@ if __name__ == '__main__':
             if (message.type == "note_off" or (message.type == "note_on" and message.velocity == 0)):
                 noteToUse = min(max(48, message.note),72)
                 lastNoteOffBeat = currentBeat2
-                # if (message.channel == 1):
-                #     print("Skipping channel 1 note off...")
-                # if (message.channel == 0):
-                # Debug, ignore channel exclusions
-                if (noteToUse == lastNote and noteHeld):
+                # The original intention was to terminate the held note when there was a noteoff event on channel 0
+                # Other channels could be used for adding glissando. The issue is rock band charts frequently use
+                # channel 3. As a compromise, note is terminated when a noteoff on the original channel is found.
+                # This allows both to function as intended. And perhaps some people who accidentally use channel 1
+                # will have a bit less of a headache
+                if (message.channel == heldNoteChannel and noteToUse == lastNote and noteHeld):
                     currentNote[1] = round(currentBeat2-currentNote[0] - noteTrimming,3)
                     currentNote[4] = currentNote[4]
                     currentNote[3] = 0
@@ -340,13 +293,32 @@ if __name__ == '__main__':
         #print("totaltime: " + str(totaltime)+"s")
 
     notes = sorted(notes, key=lambda x: x[0] )
-    pyperclip.copy(str(notes))
 
     msg = "Enter the Chart Info"
     title = "Chart Info"
 
-    fieldNames = ["Song Name","Short Name", "Folder Name", "Year","Author", "Genre", "Description", "Difficulty", "Note Spacing", "Song Endpoint (in beats)", "Beats per Bar"]
-    fieldValues = [songName, songName, songName.replace(" ",""), "2022", "", "","", "5", "120", int(final_bar+4), 4]  # we start with blanks for the values
+    fieldNames =   ["Song Name",
+                    "Short Name",
+                    "Folder Name",
+                    "Year",
+                    "Author",
+                    "Genre",
+                    "Description",
+                    "Difficulty",
+                    "Note Spacing",
+                    "Song Endpoint (in beats)",
+                    "Beats per Bar"]
+    fieldValues =  [songName,
+                    songName,
+                    songName.replace(" ",""),
+                    str(dicc["year"]),
+                    dicc["author"],
+                    dicc["genre"],
+                    dicc["description"],
+                    str(dicc["difficulty"]),
+                    str(dicc["savednotespacing"]),
+                    int(final_bar+4),
+                    str(dicc["timesig"])]
     fieldValues = multenterbox(msg,title, fieldNames, fieldValues)
 
     # make sure that none of the fields was left blank
@@ -359,28 +331,32 @@ if __name__ == '__main__':
         if errmsg == "": break # no problems found
         fieldValues = multenterbox(errmsg, title, fieldNames, fieldValues)
 
-    dicc = dict()
-    dicc["notes"] = notes
-    dicc["name"]= fieldValues[0]
-    dicc["shortName"]= fieldValues[1]
-    dicc["trackRef"]= fieldValues[2]
     dicc["year"]= int(fieldValues[3])
     dicc["author"]= fieldValues[4]
     dicc["genre"]= fieldValues[5]
     dicc["description"]= fieldValues[6]
     dicc["difficulty"]= int(fieldValues[7])
     dicc["savednotespacing"]= int(fieldValues[8])
-    dicc["endpoint"]= int(fieldValues[9])
     dicc["timesig"]= int(fieldValues[10])
+
+    settingjson = dicc.copy()
+
+    dicc["notes"] = notes
+    dicc["name"]= fieldValues[0]
+    dicc["shortName"]= fieldValues[1]
+    dicc["trackRef"]= fieldValues[2]
+    dicc["endpoint"]= int(fieldValues[9])
     dicc["tempo"]= int(bpm)
     dicc["lyrics"]= lyricsOut
     dicc["UNK1"]= 0
 
-    json = json.dumps(dicc)
+    chartjson = json.dumps(dicc)
 
-    out = filesavebox(default="song"+'.tmb')
-    with open(out,"w") as file:
-        file.write(json)
+    settingjson["savefile"] = filesavebox(default=settingjson["savefile"])
+    with open(settingjson["savefile"],"w") as file:
+        file.write(chartjson)
 
+    with open(history_file, "w") as settingFile:
+        json.dump(settingjson, settingFile)
 
 sys.exit()
