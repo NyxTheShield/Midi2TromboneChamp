@@ -48,6 +48,7 @@ def history_file_path():
 
 # Load the field history
 dicc = dict()
+fileHistory = dict()
 history_file = history_file_path()
 loadSuccess = False
 if os.path.exists(history_file):
@@ -67,13 +68,13 @@ if not loadSuccess:
     dicc["difficulty"] = 5
     dicc["savednotespacing"] = 120
     dicc["timesig"] = 4
-    dicc["midfile"] = "*"
-    dicc["savefile"] = "song.tmb"
+    fileHistory["midfile"] = "*"
+    fileHistory["savefile"] = "song.tmb"
 
 path = fileopenbox(msg="Choose a MIDI file to convert.",
-                    default=dicc["midfile"],
+                    default=fileHistory["midfile"],
                     filetypes=[["\\*.mid", "\\*.midi"], "MIDI files"])
-dicc["midfile"] = path
+fileHistory["midfile"] = path
 filename = os.path.basename(path)
 filename = os.path.splitext(filename)[0]
 songName = filename
@@ -161,16 +162,14 @@ if __name__ == '__main__':
                         glissyHints = {}
                         # Nothing important should be skipped, first track should be tempo and stuff
                         skipOtherTracks = True
-                elif message.type == "lyrics":
+                elif message.type == "lyrics" or message.type == "text":
+                    if message.text[0] == "[":
+                        continue
                     if message.text == "+":
                         # Used in RB to hint that notes are slurred together
                         glissyHints[globalBeatTime] = None
                     else:
                         lyricEvents += [(i, message.text, DynamicBeatToTromboneBeat(tempoEvents, globalBeatTime))]
-                elif message.type == "text":
-                    if message.text == "+":
-                        # Sometimes they use text events too just to fuck with you
-                        glissyHints[globalBeatTime] = None
                 elif message.type == "end_of_track":
                     pass
                 else:
@@ -340,6 +339,8 @@ if __name__ == '__main__':
     dicc["timesig"]= int(fieldValues[10])
 
     settingjson = dicc.copy()
+    settingjson["midifile"] = fileHistory["midifile"]
+    settingjson["savefile"] = fileHistory["savefile"]
 
     dicc["notes"] = notes
     dicc["name"]= fieldValues[0]
@@ -352,8 +353,8 @@ if __name__ == '__main__':
 
     chartjson = json.dumps(dicc)
 
-    settingjson["savefile"] = filesavebox(default=settingjson["savefile"])
-    with open(settingjson["savefile"],"w") as file:
+    fileHistory["savefile"] = filesavebox(default=fileHistory["savefile"])
+    with open(fileHistory["savefile"],"w") as file:
         file.write(chartjson)
 
     with open(history_file, "w") as settingFile:
