@@ -53,13 +53,26 @@ loadSuccess = False
 if os.path.exists(history_file):
     try:
         with open(history_file, "r") as f:
-            dicc = json.load(f)
+            fileHistory = json.load(f)
         loadSuccess = True
+        dicc["name"]= fileHistory["name"]
+        dicc["shortName"]= fileHistory["shortName"]
+        dicc["trackRef"]= fileHistory["trackRef"]
+        dicc["year"] = fileHistory["year"]
+        dicc["author"] = fileHistory["author"]
+        dicc["genre"] = fileHistory["genre"]
+        dicc["description"] = fileHistory["description"]
+        dicc["difficulty"] = fileHistory["difficulty"]
+        dicc["savednotespacing"] = fileHistory["savednotespacing"]
+        dicc["timesig"] = fileHistory["timesig"]
     except:
         print("ERROR: Exception was raised when trying to load dialog history! " +
               f"You may need to delete {history_file} to fix. Ignoring the history for now")
 if not loadSuccess:
     # Default values for first time loading or if error occurred
+    dicc["name"]= ""
+    dicc["shortName"]= ""
+    dicc["trackRef"]= ""
     dicc["year"] = 2022
     dicc["author"] = ""
     dicc["genre"] = ""
@@ -77,6 +90,8 @@ fileHistory["midfile"] = path
 filename = os.path.basename(path)
 filename = os.path.splitext(filename)[0]
 songName = filename
+shortName = songName
+trackRef = songName.replace(" ","")
 defaultLength = 0.2
 bpm = float(enterbox("BPM of Midi", "Enter BPM", 120))
 DEFAULT_TEMPO = 60 / bpm
@@ -240,7 +255,7 @@ if __name__ == '__main__':
                 try:
                     spacing = currentBeat2 - (notes[-1][1] + notes[-1][0])
                     if (not noteHeld and spacing < defaultSpacing):
-                        notes[-1][1] = min(max(defaultLength, notes[-1][1] - (defaultSpacing - spacing)), notes[-1][1])
+                        notes[-1][1] = round(min(max(defaultLength, notes[-1][1] - (defaultSpacing - spacing)), notes[-1][1]), 3)
                 except:
                     pass
                 if (not noteHeld):
@@ -252,7 +267,16 @@ if __name__ == '__main__':
                     print("Cancelling Previous note! " + str(currentBeat2) + " old is " + str(currentNote[0]))
                     # if currentNote has a length, that means that the previous note was already terminated
                     # and this is a special condition to force a glissando
-                    if (currentNote[1] > 0): notes.pop()
+                    if (currentNote[1] > defaultLength * 2):
+                        notes.pop()
+                        # it looks better if the slide starts in the middle of the previous note
+                        # but this isn't always best if the note is too short
+                        currentNote[1] = round(max(defaultLength,currentNote[1] / 2),3)
+                        notes += [currentNote]
+                        currentNote = [round(currentNote[0] + currentNote[1], 3),0,currentNote[2],0,0]
+                    elif (currentNote[1] > 0):
+                        # remove previous note, new note becomes a slide
+                        notes.pop()
                     currentNote[1] = round(currentBeat2-currentNote[0],3)
                     currentNote[4] = (noteToUse-60)*13.75
                     currentNote[3] = currentNote[4]-currentNote[2]
@@ -306,9 +330,13 @@ if __name__ == '__main__':
                     "Note Spacing",
                     "Song Endpoint (in beats)",
                     "Beats per Bar"]
+    if dicc["name"].strip() != "":
+        songName = dicc["name"]
+        shortName = dicc["shortName"]
+        trackRef = dicc["trackRef"]
     fieldValues =  [songName,
-                    songName,
-                    songName.replace(" ",""),
+                    shortName,
+                    trackRef,
                     str(dicc["year"]),
                     dicc["author"],
                     dicc["genre"],
@@ -329,6 +357,9 @@ if __name__ == '__main__':
         if errmsg == "": break # no problems found
         fieldValues = multenterbox(errmsg, title, fieldNames, fieldValues)
 
+    dicc["name"]= fieldValues[0]
+    dicc["shortName"]= fieldValues[1]
+    dicc["trackRef"]= fieldValues[2]
     dicc["year"]= int(fieldValues[3])
     dicc["author"]= fieldValues[4]
     dicc["genre"]= fieldValues[5]
@@ -338,13 +369,10 @@ if __name__ == '__main__':
     dicc["timesig"]= int(fieldValues[10])
 
     settingjson = dicc.copy()
-    settingjson["midifile"] = fileHistory["midifile"]
+    settingjson["midfile"] = fileHistory["midfile"]
     settingjson["savefile"] = fileHistory["savefile"]
 
     dicc["notes"] = notes
-    dicc["name"]= fieldValues[0]
-    dicc["shortName"]= fieldValues[1]
-    dicc["trackRef"]= fieldValues[2]
     dicc["endpoint"]= int(fieldValues[9])
     dicc["tempo"]= int(bpm)
     dicc["lyrics"]= lyricsOut
@@ -352,8 +380,8 @@ if __name__ == '__main__':
 
     chartjson = json.dumps(dicc)
 
-    fileHistory["savefile"] = filesavebox(default=fileHistory["savefile"])
-    with open(fileHistory["savefile"],"w") as file:
+    settingjson["savefile"] = filesavebox(default=fileHistory["savefile"])
+    with open(settingjson["savefile"],"w") as file:
         file.write(chartjson)
 
     with open(history_file, "w") as settingFile:
