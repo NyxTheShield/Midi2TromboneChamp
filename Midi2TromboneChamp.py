@@ -199,23 +199,14 @@ if __name__ == '__main__':
 
     # Sort out lyric events
     lyricsOut = []
-    lastLyricBeat = -10
     for i, lyric, beat in lyricEvents:
-        # lyrics apparently are snapped to the nearest beat
         l = subLyrics(lyric)
         if l == "":
             continue
-        if beat - lastLyricBeat < 1:
-            if lyricsOut[-1]["text"][-1] == "-":
-                lyricsOut[-1]["text"] = lyricsOut[-1]["text"][:-1] + l
-            else:
-                lyricsOut[-1]["text"] += " " + l
-        else:
-            lastLyricBeat = round(beat)
-            lyricEvent = dict()
-            lyricEvent["text"] = l
-            lyricEvent["bar"] = lastLyricBeat
-            lyricsOut += [lyricEvent]
+        lyricEvent = dict()
+        lyricEvent["text"] = l
+        lyricEvent["bar"] = round(beat, 3)
+        lyricsOut += [lyricEvent]
 
     tempo = DEFAULT_TEMPO
     totaltime = 0

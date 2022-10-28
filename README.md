@@ -39,8 +39,7 @@ Midi2TromboneChamp exports JSON in the following format that represents a chart:
 And for lyrics...
 
 ```
-[{"bar":1,"text":"Do"},{"bar":2,"text":"Re"},{"bar":3,"text":"Mi"}]
-   ^beat, must be whole number
+[{"bar":1,"text":"Do"},{"bar":1.5,"text":"Re"},{"bar":2,"text":"Mi"}]
 ```
 
 ## Developer Stuff
