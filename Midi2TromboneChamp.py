@@ -234,7 +234,7 @@ if __name__ == '__main__':
                 # ignore these special control signals for stuff like phrase start and end
                 continue
             if (message.type == "note_on" and message.velocity > 0):
-                noteToUse = min(max(48, message.note),72)
+                noteToUse = min(max(47, message.note),73)
                 lastNote = noteToUse
                 if (lastNoteOffBeat == currentBeat2): noteHeld = True
                 try:
@@ -282,7 +282,7 @@ if __name__ == '__main__':
                 noteHeld = True
 
             if (message.type == "note_off" or (message.type == "note_on" and message.velocity == 0)):
-                noteToUse = min(max(48, message.note),72)
+                noteToUse = min(max(47, message.note),73)
                 lastNoteOffBeat = currentBeat2
                 # The original intention was to terminate the held note when there was a noteoff event on channel 0
                 # Other channels could be used for adding glissando. The issue is rock band charts frequently use
