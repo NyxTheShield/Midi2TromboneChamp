@@ -1,0 +1,4 @@
+# These packages are required, pyinstaller is required to create an exe
+easygui
+mido
+pyinstaller

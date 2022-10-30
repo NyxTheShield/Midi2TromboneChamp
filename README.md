@@ -4,7 +4,10 @@ Create charts for Trombone Champ from midis, to be used with [TrombLoader](https
 ## Important Notes
 * Midi Channel 1 is used for actual notes, while Channel 2 is used for multiple slide notes.
 * A sequence of Channel 2 notes must end with a Channel 1 note. Also, please quantize your charts, the game hates unquantized notes.
+* You may have a midi file that changes tempo, this program will do its best to place notes at the correct timing, even if they are off of the beat bars in game
+* Lyric events will be auto-placed to the beat closest to where the lyric events happen
 * It's strongly advised to make your own MIDI files. Trying to import ones directly from the internet will probably result in a crash or a bunch of bad notes in your chart.
+* Using midi files that have Rockband vocal tracks will generate a chart based on the vocal track
 
 ## Usage
 1. When you run the executable, you'll first be prompted to load your MIDI file.
@@ -32,3 +35,18 @@ Midi2TromboneChamp exports JSON in the following format that represents a chart:
 ```
 [note position, note length, start pitch, pitch delta, pitch end]
 ```
+
+And for lyrics...
+
+```
+[{"bar":1,"text":"Do"},{"bar":1.5,"text":"Re"},{"bar":2,"text":"Mi"}]
+```
+
+## Developer Stuff
+You will need Python and pip if you want to make changes to this code. After installing those, install the requirements using this command inside the directory
+
+`pip install -r requirements.txt`
+
+to create an exe, run the following:
+
+`pyinstaller --onefile .\Midi2TromboneChamp.py`
